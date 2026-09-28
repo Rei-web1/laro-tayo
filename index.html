@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Laro tayo pls</title>
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Baloo+2:wght@500;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#24124d;--pink:#ff4d8d;--sun:#ffe14d;--mint:#5dffc0;--paper:#fff8ec}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:'Baloo 2',system-ui,sans-serif;color:var(--ink);background:var(--ink);overflow:hidden}
+#bg{position:fixed;inset:0;z-index:0;background:radial-gradient(circle at 30% 20%,#ff8fb8,transparent 55%),linear-gradient(160deg,#7a3cff,var(--pink));display:grid;place-items:start center;padding-top:12vh;font-size:34vmin}
+#bg img,#bg video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#bg::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(36,18,77,.55),rgba(36,18,77,0) 45%)}
+#app{position:fixed;inset:0;z-index:1;display:flex;align-items:flex-end;justify-content:center;padding:14px 14px calc(18px + env(safe-area-inset-bottom));pointer-events:none}
+.card{pointer-events:auto;background:rgba(255,248,236,.95);border:3px solid var(--ink);border-radius:26px;box-shadow:0 6px 0 var(--ink);padding:16px 18px 18px;width:min(480px,100%);text-align:center;animation:pop .35s ease-out}
+@keyframes pop{from{transform:translateY(28px);opacity:0}}
+h1{font-family:'Bagel Fat One','Baloo 2',system-ui,sans-serif;font-weight:400;font-size:1.65rem;line-height:1.15;margin:0 0 4px}
+p{margin:0 0 6px;font-size:1rem}
+.row{display:flex;gap:10px;margin-top:12px}
+.row button{flex:1 1 0;min-width:120px}
+button,input{font:inherit;color:var(--ink)}
+button{font-weight:800;font-size:1.1rem;padding:10px 16px;border:3px solid var(--ink);border-radius:999px;background:var(--sun);box-shadow:0 4px 0 var(--ink);cursor:pointer}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+button:focus-visible,input:focus-visible,.game:focus-visible{outline:4px solid var(--pink);outline-offset:2px}
+button.yes{background:var(--mint)}
+button.no{background:#fff}
+input{width:100%;padding:11px 16px;border:3px solid var(--ink);border-radius:16px;background:#fff;font-size:1.2rem;text-align:center}
+.games{display:flex;gap:10px;overflow-x:auto;padding:6px 4px 10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.game{flex:0 0 118px;scroll-snap-align:start;border:3px solid var(--ink);border-radius:18px;background:#fff;padding:0;overflow:hidden;box-shadow:0 3px 0 var(--ink);font-size:.95rem}
+.game .pic{height:76px;display:grid;place-items:center;font-size:2.2rem;background:#e9e2ff}
+.game .pic img{width:100%;height:100%;object-fit:cover}
+.game span{display:block;padding:4px 6px}
+.game.on{background:var(--mint);outline:3px solid var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
+.chips button{padding:8px 16px;font-size:1rem}
+#msg{min-height:1.3em;margin-top:6px;font-weight:800;color:#c2185b}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+#confetti{position:fixed;inset:0;z-index:2;pointer-events:none}
+@media (prefers-reduced-motion:reduce){.card,.shake{animation:none}}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<main id="app"></main>
+<canvas id="confetti"></canvas>
+
+<script>
+/* ========= EDIT THESE ========= */
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbw9SRfU9mZ8Z--6-vACdblyuZy8drxMABRMf5eRrIepAeGqkMAVqXlZo5TZ2c7I4Df3sA/exec";
+
+// Background photo/gif/video per page. Put files in the repo, e.g. "media/ask.gif" or "media/ask.mp4". Leave "" for the placeholder.
+const MEDIA = { name: "", pick: "", day: "", time: "", ask: "", sure: "", pilit: "", yey: "" };
+
+// Your games. img = photo path, e.g. "media/game1.jpg". Leave "" for the placeholder.
+const GAMES = [
+  { name: "Game 1", img: "" },
+  { name: "Game 2", img: "" },
+  { name: "Game 3", img: "" },
+  { name: "Game 4", img: "" }
+];
+/* ============================== */
+
+const S = { name: "", game: "", time: "", day: "", forced: false, path: [], dodges: 0, t0: Date.now(), sent: false };
+const app = document.getElementById("app");
+const bg = document.getElementById("bg");
+
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const k in attrs) {
+    if (k === "class") el.className = attrs[k];
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), attrs[k]);
+    else el.setAttribute(k, attrs[k]);
+  }
+  kids.flat().forEach(c => el.append(c));
+  return el;
+}
+
+function setBg(url, emoji) {
+  bg.replaceChildren();
+  if (!url) { bg.append(emoji); return; }
+  if (/\.(mp4|webm)$/i.test(url)) {
+    const v = h("video", { src: url, autoplay: "", muted: "", loop: "", playsinline: "" });
+    v.muted = true; bg.append(v); v.play().catch(() => {});
+  } else bg.append(h("img", { src: url, alt: "" }));
+}
+
+function show(key, emoji, card) {
+  setBg(MEDIA[key], emoji);
+  app.replaceChildren(card);
+}
+
+function go(label, next) { S.path.push(label); next(); }
+
+function send(done) {
+  if (S.sent || !S.name) return;
+  S.sent = true;
+  const body = JSON.stringify({
+    name: S.name, path: S.path.join(" > "), game: S.game,
+    time: (S.day + " " + S.time).trim(), dodges: S.dodges, seconds: Math.round((Date.now() - S.t0) / 1000),
+    finished: done ? "yes" : "left early"
+  });
+  try { fetch(SHEET_URL, { method: "POST", mode: "no-cors", body, keepalive: true }); } catch (e) {}
+}
+addEventListener("pagehide", () => send(false));
+
+/* ---- Pages ---- */
+function pageName() {
+  const input = h("input", { type: "text", maxlength: "30", placeholder: "Name mo", "aria-label": "Name mo" });
+  const msg = h("div", { id: "msg" });
+  const next = () => {
+    const v = input.value.trim();
+    if (!v) { msg.textContent = "Ilagay mo muna name mo!"; card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake"); return; }
+    S.name = v; S.t0 = Date.now(); go("name", pageAsk);
+  };
+  input.addEventListener("keydown", e => { if (e.key === "Enter") next(); });
+  const card = h("div", { class: "card" },
+    h("h1", {}, "Uy, sino ka?"), input, msg,
+    h("div", { class: "row" }, h("button", { class: "yes", onclick: next }, "Next")));
+  show("name", "👀", card);
+  input.focus();
+}
+
+function pageAsk() {
+  const t = h("h1", {}); t.textContent = "Laro tayo pls, " + S.name;
+  show("ask", "🎮", h("div", { class: "card" }, t,
+    h("div", { class: "row" },
+      h("button", { class: "yes", onclick: () => go("okay", pagePicker) }, "Okay"),
+      h("button", { class: "no", onclick: () => go("ayoko tatamad ako", pageSure) }, "Ayoko, tatamad ako"))));
+}
+
+function pageSure() {
+  show("sure", "🥺", h("div", { class: "card" },
+    h("h1", {}, "Sure kana?"),
+    h("div", { class: "row" },
+      h("button", { class: "no", onclick: () => go("oo", pagePilit) }, "Oo"),
+      h("button", { class: "yes", onclick: () => go("hmm hindi", pagePicker) }, "Hmm hindi"))));
+}
+
+function pagePicker() {
+  const msg = h("div", { id: "msg" });
+  const okBtn = h("button", { class: "yes" }, "Okay");
+  const grid = h("div", { class: "games" });
+  GAMES.forEach(g => {
+    const pic = h("div", { class: "pic" }, g.img ? h("img", { src: g.img, alt: g.name }) : "🎲");
+    const b = h("button", { class: "game", "aria-pressed": "false" }, pic, h("span", {}, g.name));
+    if (S.game === g.name) { b.classList.add("on"); b.setAttribute("aria-pressed", "true"); }
+    b.addEventListener("click", () => {
+      grid.querySelectorAll(".game").forEach(x => { x.classList.remove("on"); x.setAttribute("aria-pressed", "false"); });
+      b.classList.add("on"); b.setAttribute("aria-pressed", "true");
+      S.game = g.name; msg.textContent = "";
+    });
+    grid.append(b);
+  });
+  okBtn.addEventListener("click", () => {
+    if (!S.game) { msg.textContent = "Pumili ka muna ng laro!"; return; }
+    go("okay (" + S.game + ")", pageDay);
+  });
+  show("pick", "🕹️", h("div", { class: "card" },
+    h("h1", {}, "Ano lalaruin natin?"), grid, msg,
+    h("div", { class: "row" }, okBtn,
+      S.forced ? "" : h("button", { class: "no", onclick: () => go("ayoko pala", pagePilit) }, "Ayoko pala"))));
+}
+
+function pagePilit() {
+  const no = h("button", { class: "no", id: "no" }, "Ayoko");
+  let last = 0;
+  const dodge = (px, py) => {
+    const now = Date.now(); if (now - last < 200) return; last = now;
+    S.dodges++;
+    const w = no.offsetWidth, hh = no.offsetHeight;
+    let x, y, tries = 0;
+    do {
+      x = 8 + Math.random() * (innerWidth - w - 16);
+      y = 8 + Math.random() * (innerHeight - hh - 16);
+      tries++;
+    } while (tries < 15 && Math.hypot(x + w / 2 - px, y + hh / 2 - py) < 160);
+    no.style.position = "fixed"; no.style.left = x + "px"; no.style.top = y + "px"; no.style.zIndex = 5;
+  };
+  const near = e => {
+    const r = no.getBoundingClientRect();
+    const d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+    if (d < Math.max(r.width, 90)) dodge(e.clientX, e.clientY);
+  };
+  document.addEventListener("pointermove", near);
+  no.addEventListener("pointerdown", e => { e.preventDefault(); dodge(e.clientX, e.clientY); });
+  no.addEventListener("click", e => { e.preventDefault(); dodge(innerWidth / 2, innerHeight / 2); });
+  no.addEventListener("focus", () => dodge(innerWidth / 2, innerHeight / 2));
+  const yes = h("button", { class: "yes" }, "Sige na nga");
+  yes.addEventListener("click", () => { document.removeEventListener("pointermove", near); S.forced = true; go("sige na nga", pagePicker); });
+  show("pilit", "😤", h("div", { class: "card" },
+    h("h1", {}, "Laro na kasi"), 
+    h("div", { class: "row" }, yes, no)));
+}
+
+function pageDay() {
+  const days = ["Ngayon", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
+  const chips = h("div", { class: "chips" });
+  days.forEach(d => chips.append(h("button", { class: "yes", onclick: () => { S.day = d; go("araw: " + d, pageTime); } }, d)));
+  show("day", "📅", h("div", { class: "card" }, h("h1", {}, "Anong araw tayo?"), chips));
+}
+
+function pageTime() {
+  const input = h("input", { type: "time", "aria-label": "Anong oras" });
+  const msg = h("div", { id: "msg" });
+  const next = () => {
+    if (!input.value) { msg.textContent = "Ilagay mo muna kung anong oras!"; return; }
+    const [hh, mm] = input.value.split(":").map(Number);
+    S.time = ((hh % 12) || 12) + ":" + String(mm).padStart(2, "0") + (hh < 12 ? " AM" : " PM");
+    go("oras: " + S.time, pageYey);
+  };
+  show("time", "⏰", h("div", { class: "card" },
+    h("h1", {}, "Anong oras tayo?"), input, msg,
+    h("div", { class: "row" }, h("button", { class: "yes", onclick: next }, "Next"))));
+}
+
+function pageYey() {
+  S.path.push("done");
+  send(true);
+  const t = h("h1", {}); t.textContent = "Yey! Lalaro tayo, pumayag ka rin tangna";
+  show("yey", "🎉", h("div", { class: "card" }, t,
+    h("p", {}, S.game + " · " + S.day + " " + S.time)));
+  confetti();
+}
+
+/* ---- Confetti ---- */
+function confetti() {
+  if (matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  const c = document.getElementById("confetti"), x = c.getContext("2d");
+  c.width = innerWidth; c.height = innerHeight;
+  const cols = ["#ff4d8d", "#ffe14d", "#5dffc0", "#7a3cff", "#ffffff"];
+  const ps = Array.from({ length: 160 }, () => ({
+    x: Math.random() * c.width, y: -Math.random() * c.height,
+    s: 6 + Math.random() * 8, v: 2 + Math.random() * 4, d: Math.random() * 2 - 1,
+    r: Math.random() * 6, c: cols[Math.floor(Math.random() * cols.length)]
+  }));
+  const end = Date.now() + 6000;
+  (function frame() {
+    x.clearRect(0, 0, c.width, c.height);
+    ps.forEach(p => {
+      p.y += p.v; p.x += p.d * 2; p.r += 0.1;
+      x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c; x.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6); x.restore();
+      if (p.y > c.height && Date.now() < end) { p.y = -10; p.x = Math.random() * c.width; }
+    });
+    if (Date.now() < end + 3000) requestAnimationFrame(frame); else x.clearRect(0, 0, c.width, c.height);
+  })();
+}
+
+pageName();
+</script>
+</body>
+</html>
