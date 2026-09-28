@@ -38,6 +38,7 @@ input{width:100%;padding:11px 16px;border:3px solid var(--ink);border-radius:16p
 #msg{min-height:1.3em;margin-top:6px;font-weight:800;color:#c2185b}
 .shake{animation:shake .35s}
 @keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.mute{position:fixed;top:calc(10px + env(safe-area-inset-top));right:10px;z-index:10;padding:4px 10px;font-size:1.1rem;box-shadow:0 3px 0 var(--ink)}
 #confetti{position:fixed;inset:0;z-index:2;pointer-events:none}
 @media (prefers-reduced-motion:reduce){.card,.shake{animation:none}}
 </style>
@@ -61,11 +62,36 @@ const GAMES = [
   { name: "Obby", img: "media/obby.png" },
   { name: "Simulation", img: "media/simulation.png" }
 ];
+
+// Sounds (.mp3 files). Each plays when that page opens. Leave "" for no sound.
+// name = plays on the first tap on the first page. click = every button tap, dodge = each time the "Ayoko" button runs away.
+const SOUNDS = { name: "media/name.mp3", ask: "media/ask.mp3", sure: "", pick: "media/pick.mp3", pilit: "media/pilit.mp3", day: "", time: "", yey: "media/yey.mp3", click: "", dodge: "" };
 /* ============================== */
 
 const S = { name: "", game: "", time: "", day: "", forced: false, path: [], dodges: 0, t0: Date.now(), sent: false };
 const app = document.getElementById("app");
 const bg = document.getElementById("bg");
+
+let muted = false;
+const clips = {};
+function play(key) {
+  if (muted || !SOUNDS[key]) return;
+  try {
+    const a = clips[key] || (clips[key] = new Audio(SOUNDS[key]));
+    a.currentTime = 0;
+    a.play().catch(() => {});
+  } catch (e) {}
+}
+const muteBtn = h2("button", "mute", "🔊");
+function h2(tag, cls, txt) { const e = document.createElement(tag); e.className = cls; e.textContent = txt; return e; }
+muteBtn.setAttribute("aria-label", "Sound on/off");
+muteBtn.addEventListener("click", () => {
+  muted = !muted;
+  muteBtn.textContent = muted ? "🔇" : "🔊";
+  if (muted) Object.values(clips).forEach(a => a.pause());
+});
+document.body.append(muteBtn);
+document.addEventListener("click", e => { if (e.target.closest("button") && !e.target.closest("#no") && !e.target.closest(".mute")) play("click"); });
 
 function h(tag, attrs = {}, ...kids) {
   const el = document.createElement(tag);
@@ -89,6 +115,7 @@ function setBg(url, emoji) {
 
 function show(key, emoji, card) {
   setBg(MEDIA[key], emoji);
+  play(key);
   app.replaceChildren(card);
 }
 
@@ -121,6 +148,7 @@ function pageName() {
     h("div", { class: "row" }, h("button", { class: "yes", onclick: next }, "Next")));
   show("name", "👀", card);
   input.focus();
+  document.addEventListener("pointerdown", () => { if (!S.name) play("name"); }, { once: true });
 }
 
 function pageAsk() {
@@ -170,6 +198,7 @@ function pagePilit() {
   const dodge = (px, py) => {
     const now = Date.now(); if (now - last < 200) return; last = now;
     S.dodges++;
+    play("dodge");
     const w = no.offsetWidth, hh = no.offsetHeight;
     let x, y, tries = 0;
     do {
